@@ -1,0 +1,7 @@
+ultralytics==8.4.216
+onnxruntime==1.32.0
+fast-plate-ocr==1.1.0
+fastapi==0.165.0
+uvicorn==0.54.0
+python-multipart==0.0.34
+opencv-python-headless==5.1.0.95
