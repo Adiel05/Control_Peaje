@@ -1,0 +1,40 @@
+# Entornos y caches Python
+.venv/
+.venv312/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Secretos y configuracion local
+.env
+*.env
+!.env.example
+
+# Bases de datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Pesos grandes y salidas de entrenamiento
+*.pt
+*.pth
+runs/
+weights/
+
+# Flutter / Android
+movil/build/
+movil/.dart_tool/
+movil/.flutter-plugins
+movil/.flutter-plugins-dependencies
+movil/.packages
+movil/android/.gradle/
+movil/android/local.properties
+movil/android/app/debug/
+movil/android/app/release/
+
+# Logs y temporales
+*.log
+.DS_Store
+Thumbs.db

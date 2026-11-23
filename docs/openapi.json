@@ -1,0 +1,625 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "API Sistema de Control de Peaje",
+    "description": "Backend web, API REST v1, tiempo real (SSE) y agente conversacional para el Sistema Inteligente de Control de Peaje.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/auth/google": {
+      "post": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Autenticar con Google Sign-In y emitir JWT",
+        "operationId": "auth_google_api_v1_auth_google_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleAuthRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Perfil del usuario autenticado",
+        "operationId": "auth_me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/casetas": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Listar casetas de peaje disponibles",
+        "operationId": "listar_casetas_api_v1_casetas_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/pasos/frame": {
+      "post": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Enviar frame desde caseta móvil para inferencia y registro",
+        "operationId": "registrar_frame_api_v1_pasos_frame_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_registrar_frame_api_v1_pasos_frame_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/placas/consultar": {
+      "post": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Consultar estado de una placa por texto",
+        "operationId": "consultar_placa_texto_api_v1_placas_consultar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsultarPlacaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/placas/consultar-imagen": {
+      "post": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Consultar estado de una placa desde una imagen",
+        "operationId": "consultar_placa_imagen_api_v1_placas_consultar_imagen_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_consultar_placa_imagen_api_v1_placas_consultar_imagen_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/placas/{placa}/historial": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Historial de pasos de una placa",
+        "operationId": "obtener_historial_placa_api_v1_placas__placa__historial_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "placa",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Placa"
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limite"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/casetas/{caseta_id}/resumen": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Conteo y recaudación del día en una caseta",
+        "operationId": "obtener_resumen_caseta_api_v1_casetas__caseta_id__resumen_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "caseta_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Caseta Id"
+            }
+          },
+          {
+            "name": "fecha",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fecha"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/agente/chat": {
+      "post": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Consultar al agente conversacional por texto y/o imagen",
+        "operationId": "chat_agente_api_v1_agente_chat_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_chat_agente_api_v1_agente_chat_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/panel/resumen": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Resumen global del día para el panel",
+        "operationId": "obtener_panel_resumen_api_v1_panel_resumen_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/estado/inferencia": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Verificar conectividad y salud del endpoint de inferencia",
+        "operationId": "estado_inferencia_api_v1_estado_inferencia_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/diagnostico": {
+      "get": {
+        "tags": [
+          "API Peaje v1"
+        ],
+        "summary": "Diagnóstico del entorno del servidor web (solo admin)",
+        "operationId": "obtener_diagnostico_api_v1_diagnostico_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_chat_agente_api_v1_agente_chat_post": {
+        "properties": {
+          "mensaje": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mensaje"
+          },
+          "imagen": {
+            "anyOf": [
+              {
+                "type": "string",
+                "contentMediaType": "application/octet-stream"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imagen"
+          },
+          "historial": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historial"
+          }
+        },
+        "type": "object",
+        "title": "Body_chat_agente_api_v1_agente_chat_post"
+      },
+      "Body_consultar_placa_imagen_api_v1_placas_consultar_imagen_post": {
+        "properties": {
+          "imagen": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Imagen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imagen"
+        ],
+        "title": "Body_consultar_placa_imagen_api_v1_placas_consultar_imagen_post"
+      },
+      "Body_registrar_frame_api_v1_pasos_frame_post": {
+        "properties": {
+          "caseta_id": {
+            "type": "integer",
+            "title": "Caseta Id"
+          },
+          "imagen": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Imagen"
+          }
+        },
+        "type": "object",
+        "required": [
+          "caseta_id",
+          "imagen"
+        ],
+        "title": "Body_registrar_frame_api_v1_pasos_frame_post"
+      },
+      "ConsultarPlacaRequest": {
+        "properties": {
+          "placa": {
+            "type": "string",
+            "title": "Placa",
+            "description": "Texto de placa a consultar (ej. 1234ABC o 1234-ABC)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "placa"
+        ],
+        "title": "ConsultarPlacaRequest"
+      },
+      "GoogleAuthRequest": {
+        "properties": {
+          "id_token": {
+            "type": "string",
+            "title": "Id Token",
+            "description": "ID token de Google Sign-In obtenido en la app móvil"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id_token"
+        ],
+        "title": "GoogleAuthRequest"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}
