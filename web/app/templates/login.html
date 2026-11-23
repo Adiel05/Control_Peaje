@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión · Control de Peaje{% endblock %}
+{% block content %}
+<div class="card center-box">
+  <h1>Sistema de Control de Peaje</h1>
+  <p style="color: var(--muted);">Inicia sesión con tu cuenta de Google autorizada para acceder al panel y al agente.</p>
+  {% if oauth_listo %}
+  <a href="/auth/google/login" class="btn" style="margin-top: 0.75rem;">Ingresar con Google</a>
+  {% else %}
+  <div class="flash flash-err" style="margin-top: 1rem;">
+    Google OAuth no está configurado aún (<code>GOOGLE_CLIENT_ID</code> / <code>GOOGLE_CLIENT_SECRET</code>).
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

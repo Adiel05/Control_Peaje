@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Historial de Pasos · Control de Peaje{% endblock %}
+{% block content %}
+<h2>Historial de pasos ({{ total }})</h2>
+
+<div class="card">
+  <form method="get" action="/pasos" class="form-row">
+    <div class="field">
+      <label>Filtrar por placa</label>
+      <input type="text" name="placa" value="{{ placa }}" placeholder="Ej. 1234ABC">
+    </div>
+    <button type="submit" class="btn">Filtrar</button>
+    {% if placa %}<a href="/pasos" class="btn btn-outline">Ver todos</a>{% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Evidencia</th>
+          <th>Placa</th>
+          <th>Confianza OCR</th>
+          <th>Categoría</th>
+          <th>Ejes</th>
+          <th>Pasajeros</th>
+          <th>Monto</th>
+          <th>Caseta</th>
+          <th>Estado</th>
+          <th>Latencia</th>
+          <th>Fecha (La Paz)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in pasos %}
+        {% set p = item.obj %}
+        <tr>
+          <td>
+            {% if p.imagen_url %}
+            <a href="{{ p.imagen_url }}" target="_blank"><img class="thumb" src="{{ p.imagen_url }}" alt="Evidencia"></a>
+            {% else %}
+            <span class="badge badge-muted">Sin img</span>
+            {% endif %}
+          </td>
+          <td><strong>{{ p.placa_normalizada }}</strong></td>
+          <td>{{ "%.1f%%"|format(p.confianza_ocr * 100) if p.confianza_ocr is not none else '-' }}</td>
+          <td>{{ p.categoria_detectada or '-' }}</td>
+          <td>{{ p.ejes_detectados if p.ejes_detectados is not none else '-' }}</td>
+          <td>{{ p.pasajeros if p.pasajeros is not none else '-' }}</td>
+          <td>Bs {{ "%.2f"|format(p.monto) }}</td>
+          <td>{{ p.caseta.nombre if p.caseta else p.caseta_id }}</td>
+          <td>
+            {% if p.estado == 'OK' %}
+            <span class="badge badge-ok">OK</span>
+            {% elif p.estado == 'SIN_SALDO' %}
+            <span class="badge badge-warn">SIN_SALDO</span>
+            {% else %}
+            <span class="badge badge-err">{{ p.estado }}</span>
+            {% endif %}
+          </td>
+          <td>{{ (p.latencia_ms|string + ' ms') if p.latencia_ms is not none else '-' }}</td>
+          <td>{{ item.fecha_legible }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11" style="text-align:center;color:var(--muted);">No hay pasos que coincidan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if total_paginas > 1 %}
+  <div style="display:flex;gap:0.5rem;margin-top:0.85rem;align-items:center;">
+    {% if pagina_actual > 1 %}
+    <a class="btn btn-sm btn-outline" href="/pasos?placa={{ placa }}&pagina={{ pagina_actual - 1 }}">← Anterior</a>
+    {% endif %}
+    <span style="font-size:0.9rem;color:var(--muted);">Página {{ pagina_actual }} de {{ total_paginas }}</span>
+    {% if pagina_actual < total_paginas %}
+    <a class="btn btn-sm btn-outline" href="/pasos?placa={{ placa }}&pagina={{ pagina_actual + 1 }}">Siguiente →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

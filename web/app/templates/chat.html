@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Agente Conversacional · Control de Peaje{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+  <h2 style="margin:0;">Agente conversacional de placas</h2>
+  <span class="badge {{ 'badge-ok' if gemini_activo else 'badge-info' }}">
+    {{ 'Gemini activo + herramientas BD' if gemini_activo else 'Modo reglas determinista (sin GEMINI_API_KEY)' }}
+  </span>
+</div>
+
+<div class="card">
+  <div id="chat-mensajes" class="chat-box">
+    <div class="msg msg-bot">Hola. Pregúntame por cualquier placa (ej. 1234ABC, 7890GHI, 9999ZZZ, I234A8C) o sube una fotografía de la placa.</div>
+  </div>
+  <form id="form-chat" class="form-row">
+    <div class="field" style="flex:1;min-width:220px;">
+      <label>Consulta por texto</label>
+      <input type="text" id="chat-texto" placeholder="¿Pasó la placa 1234ABC?">
+    </div>
+    <div class="field">
+      <label>Imagen de placa (opcional)</label>
+      <input type="file" id="chat-imagen" accept="image/*">
+    </div>
+    <button type="submit" id="btn-enviar" class="btn">Consultar</button>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/chat.js"></script>
+{% endblock %}

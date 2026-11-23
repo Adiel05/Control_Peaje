@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Acceso denegado · Control de Peaje{% endblock %}
+{% block content %}
+<div class="card center-box">
+  <h1 style="color: var(--err-fg);">Acceso denegado</h1>
+  <p>La cuenta <strong>{{ email }}</strong> no está autorizada en la lista blanca del sistema o se encuentra desactivada.</p>
+  <p style="color: var(--muted); font-size: 0.9rem;">Solicita al administrador que registre tu correo en la tabla de usuarios.</p>
+  <a href="/login" class="btn btn-secondary" style="margin-top: 0.75rem;">Volver al inicio de sesión</a>
+</div>
+{% endblock %}

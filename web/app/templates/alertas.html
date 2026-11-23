@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Alertas · Control de Peaje{% endblock %}
+{% block content %}
+<h2>Alertas del sistema</h2>
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tipo</th>
+          <th>Placa</th>
+          <th>Caseta</th>
+          <th>Monto ref.</th>
+          <th>Fecha (La Paz)</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in alertas %}
+        {% set a = item.obj %}
+        <tr>
+          <td>#{{ a.id }}</td>
+          <td><span class="badge {{ 'badge-warn' if a.tipo == 'SIN_SALDO' else 'badge-err' }}">{{ a.tipo }}</span></td>
+          <td><strong>{{ a.paso.placa_normalizada if a.paso else '-' }}</strong></td>
+          <td>{{ a.paso.caseta.nombre if a.paso and a.paso.caseta else '-' }}</td>
+          <td>Bs {{ "%.2f"|format(a.paso.monto) if a.paso else '0.00' }}</td>
+          <td>{{ item.fecha_legible }}</td>
+          <td>
+            {% if a.atendida %}
+            <span class="badge badge-ok">Atendida</span>
+            {% else %}
+            <span class="badge badge-err">Pendiente</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not a.atendida %}
+            <form method="post" action="/alertas/{{ a.id }}/atender">
+              <button type="submit" class="btn btn-sm">Marcar atendida</button>
+            </form>
+            {% else %}
+            —
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" style="text-align:center;color:var(--muted);">Sin alertas registradas.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

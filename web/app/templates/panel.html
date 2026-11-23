@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Panel en tiempo real · Control de Peaje{% endblock %}
+{% block content %}
+<div id="toast-container" class="toast-container"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
+  <h2 style="margin:0;">Panel en tiempo real</h2>
+  <span id="sse-estado" class="badge badge-muted">Conectando SSE...</span>
+</div>
+
+<div class="grid-3">
+  <div class="card">
+    <div class="kpi-label">Pasos de hoy</div>
+    <div id="kpi-pasos" class="kpi-value">{{ resumen.pasos_hoy }}</div>
+  </div>
+  <div class="card">
+    <div class="kpi-label">Recaudación de hoy</div>
+    <div id="kpi-recaudacion" class="kpi-value">Bs {{ "%.2f"|format(resumen.recaudacion_hoy) }}</div>
+  </div>
+  <div class="card">
+    <div class="kpi-label">Alertas pendientes</div>
+    <div id="kpi-alertas" class="kpi-value" style="color: var(--err-fg);">{{ resumen.alertas_pendientes }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Últimos pasos registrados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Evidencia</th>
+          <th>Placa</th>
+          <th>Categoría</th>
+          <th>Ejes</th>
+          <th>Pasajeros</th>
+          <th>Monto</th>
+          <th>Caseta</th>
+          <th>Estado</th>
+          <th>Hora (La Paz)</th>
+        </tr>
+      </thead>
+      <tbody id="tabla-pasos-body">
+        {% for item in pasos %}
+        {% set p = item.obj %}
+        <tr>
+          <td>
+            {% if p.imagen_url %}
+            <a href="{{ p.imagen_url }}" target="_blank"><img class="thumb" src="{{ p.imagen_url }}" alt="Evidencia"></a>
+            {% else %}
+            <span class="badge badge-muted">Sin img</span>
+            {% endif %}
+          </td>
+          <td><strong>{{ p.placa_normalizada }}</strong></td>
+          <td>{{ p.categoria_detectada or '-' }}</td>
+          <td>{{ p.ejes_detectados if p.ejes_detectados is not none else '-' }}</td>
+          <td>{{ p.pasajeros if p.pasajeros is not none else '-' }}</td>
+          <td>Bs {{ "%.2f"|format(p.monto) }}</td>
+          <td>{{ p.caseta.nombre if p.caseta else p.caseta_id }}</td>
+          <td>
+            {% if p.estado == 'OK' %}
+            <span class="badge badge-ok">OK</span>
+            {% elif p.estado == 'SIN_SALDO' %}
+            <span class="badge badge-warn">SIN_SALDO</span>
+            {% else %}
+            <span class="badge badge-err">{{ p.estado }}</span>
+            {% endif %}
+          </td>
+          <td>{{ item.fecha_legible }}</td>
+        </tr>
+        {% else %}
+        <tr id="fila-vacia"><td colspan="9" style="text-align:center;color:var(--muted);">Sin pasos registrados todavía.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <h3 style="margin:0;">Alertas recientes</h3>
+    <a href="/alertas">Ver todas →</a>
+  </div>
+  <ul id="lista-alertas" style="padding-left:1.1rem;margin-top:0.75rem;">
+    {% for item in alertas %}
+    {% set a = item.obj %}
+    <li style="margin-bottom:0.4rem;">
+      <span class="badge {{ 'badge-muted' if a.atendida else 'badge-err' }}">{{ a.tipo }}</span>
+      <strong>{{ a.paso.placa_normalizada if a.paso else '-' }}</strong> ·
+      {{ a.paso.caseta.nombre if a.paso and a.paso.caseta else '' }} ·
+      {{ item.fecha_legible }}
+      {% if a.atendida %}<span class="badge badge-ok">Atendida</span>{% endif %}
+    </li>
+    {% else %}
+    <li style="color:var(--muted);">No hay alertas registradas.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="/static/panel.js"></script>
+{% endblock %}

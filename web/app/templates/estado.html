@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Estado del Sistema · Control de Peaje{% endblock %}
+{% block content %}
+<h2>Estado de servicios e inferencia</h2>
+{% if msg %}<div class="flash flash-ok">{{ msg }}</div>{% endif %}
+
+<div class="grid-3">
+  <div class="card">
+    <div class="kpi-label">Endpoint de Inferencia</div>
+    <div style="margin-top:0.4rem;">
+      {% if salud.ok %}
+      <span class="badge badge-ok">Respondiendo ({{ salud.latencia_ms }} ms)</span>
+      {% else %}
+      <span class="badge badge-err">Sin respuesta ({{ salud.error }})</span>
+      {% endif %}
+    </div>
+    <p style="font-size:0.85rem;word-break:break-all;margin-bottom:0;"><code>{{ inference_url }}</code></p>
+  </div>
+  <div class="card">
+    <div class="kpi-label">Base de datos</div>
+    <div style="margin-top:0.4rem;">
+      <span class="badge {{ 'badge-ok' if bd_ok else 'badge-err' }}">{{ 'Conectada' if bd_ok else 'Error' }}</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="kpi-label">Agente IA (Gemini)</div>
+    <div style="margin-top:0.4rem;">
+      <span class="badge {{ 'badge-ok' if gemini_configurado else 'badge-warn' }}">
+        {{ 'Configurado (' + gemini_modelo + ')' if gemini_configurado else 'Respaldo por reglas (sin API key)' }}
+      </span>
+    </div>
+  </div>
+</div>
+
+{% if salud.detalle %}
+<div class="card">
+  <h3 style="margin-top:0;">Detalle de /health de inferencia</h3>
+  <pre>{{ salud.detalle | tojson(indent=2) }}</pre>
+</div>
+{% endif %}
+
+{% if usuario.rol == 'admin' %}
+<div class="card">
+  <h3 style="margin-top:0;">Actualizar INFERENCE_URL (Colab / RunPod / mock)</h3>
+  <form method="post" action="/estado/inferencia" class="form-row">
+    <div class="field" style="flex:1;min-width:280px;">
+      <label>URL del túnel Cloudflare o proxy RunPod</label>
+      <input type="text" name="inference_url" value="{{ inference_url }}" placeholder="https://xxxx.trycloudflare.com">
+    </div>
+    <button type="submit" class="btn">Guardar URL</button>
+  </form>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0;">Herramientas de administrador</h3>
+  <div style="display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;">
+    <button type="button" id="btn-gen-token" class="btn">Generar token API (para Swagger/Postman)</button>
+    <a href="/docs" target="_blank" class="btn btn-secondary">Abrir Swagger (/docs)</a>
+    <a href="/api/v1/diagnostico" target="_blank" class="btn btn-outline">Diagnóstico entorno web</a>
+  </div>
+  <div id="box-token" style="display:none;margin-top:0.75rem;">
+    <label style="font-size:0.85rem;color:var(--muted);">Bearer Token (válido {{ salud.expira_horas or 12 }} h):</label>
+    <pre id="val-token" style="user-select:all;"></pre>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+const btnTok = document.getElementById("btn-gen-token");
+if (btnTok) {
+  btnTok.onclick = async () => {
+    const r = await fetch("/estado/token", { method: "POST" });
+    if (r.ok) {
+      const d = await r.json();
+      document.getElementById("val-token").textContent = d.token;
+      document.getElementById("box-token").style.display = "block";
+    }
+  };
+}
+</script>
+{% endblock %}

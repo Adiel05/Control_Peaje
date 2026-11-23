@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Control de Peaje IA{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  {% if usuario %}
+  <nav class="navbar">
+    <div class="nav-links">
+      <span class="brand">Control Peaje IA</span>
+      <a href="/" class="{{ 'active' if pagina == 'panel' else '' }}">Panel</a>
+      <a href="/vehiculos" class="{{ 'active' if pagina == 'vehiculos' else '' }}">Vehículos</a>
+      <a href="/pasos" class="{{ 'active' if pagina == 'pasos' else '' }}">Pasos</a>
+      <a href="/alertas" class="{{ 'active' if pagina == 'alertas' else '' }}">Alertas</a>
+      <a href="/chat" class="{{ 'active' if pagina == 'chat' else '' }}">Chat IA</a>
+      <a href="/estado" class="{{ 'active' if pagina == 'estado' else '' }}">Estado</a>
+      {% if usuario.rol == 'admin' %}
+      <a href="/admin" class="{{ 'active' if pagina == 'admin' else '' }}">Admin</a>
+      {% endif %}
+      <a href="/docs" target="_blank">API Docs</a>
+    </div>
+    <div class="nav-user">
+      <span>{{ usuario.email_google }}</span>
+      <span class="badge badge-info">{{ usuario.rol }}</span>
+      <a href="/logout" class="btn btn-sm btn-secondary">Salir</a>
+    </div>
+  </nav>
+  {% endif %}
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
