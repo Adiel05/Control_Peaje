@@ -19,6 +19,7 @@ __pycache__/
 
 # Pesos grandes y salidas de entrenamiento
 *.pt
+!inferencia/modelos/m3/*.pt
 *.pth
 runs/
 weights/

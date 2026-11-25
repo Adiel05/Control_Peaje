@@ -26,7 +26,7 @@ flowchart LR
 - **Modelos de IA e inferencia:**
   - **M1:** `yolo-v9-t-384-license-plates-end2end.onnx` + `fast-plate-ocr` (`cct_xs_v2_global.onnx`) en `onnxruntime`.
   - **M2:** `yolo11s-seg` (5 clases: `moto`, `auto`, `minibus`, `camion`, `bus`).
-  - **M3:** `yolo11s-pose` (`kpt_shape: [1, 3]`, 1 keypoint en el centro de cada rueda para estimar ejes).
+  - **M3:** `yolo11s-pose` (`inferencia/modelos/m3/m3_llantas.pt`, clase `llanta` con `kpt_shape: [5, 3]` para localizar cada rueda y estimar ejes).
   - **Pasajeros (+5):** `yolo11s-seg` (clase `person`) con máscaras opacas para privacidad (sin reconocimiento facial ni recortes de rostros).
 - **App móvil:** Flutter (Android), `camera`, `google_sign_in`, `http`, `image_picker`, `shared_preferences`.
 - **Infraestructura en la nube:** Render (web), Neon (PostgreSQL), Google Colab T4 + Cloudflare Tunnel (entrenamiento e inferencia), GitHub Actions / Flutter CLI (APK).
