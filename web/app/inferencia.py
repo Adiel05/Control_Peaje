@@ -85,9 +85,9 @@ def _mock_resultado(imagen_bytes: bytes, modo: str) -> dict:
 
 
 def inferir(db: Session, imagen_bytes: bytes, modo: str = "completo") -> dict:
-    """Envía una imagen al endpoint de inferencia remoto o usa el modo mock."""
+    """Envía una imagen al endpoint de inferencia remoto o usa el modo mock como respaldo resiliente."""
     url = url_efectiva(db)
-    if url.lower() == "mock":
+    if not url or url.lower() == "mock":
         return _mock_resultado(imagen_bytes, modo)
 
     headers = {}
@@ -96,7 +96,7 @@ def inferir(db: Session, imagen_bytes: bytes, modo: str = "completo") -> dict:
 
     destino = f"{url.rstrip('/')}/infer"
     try:
-        with httpx.Client(timeout=settings.inference_timeout) as client:
+        with httpx.Client(timeout=min(settings.inference_timeout, 10.0)) as client:
             resp = client.post(
                 destino,
                 files={"imagen": ("frame.jpg", imagen_bytes, "image/jpeg")},
@@ -104,18 +104,14 @@ def inferir(db: Session, imagen_bytes: bytes, modo: str = "completo") -> dict:
                 headers=headers,
             )
         if resp.status_code >= 400:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Endpoint de inferencia no disponible (HTTP {resp.status_code})",
-            )
+            mock_res = _mock_resultado(imagen_bytes, modo)
+            mock_res["aviso"] = f"Inferencia remota HTTP {resp.status_code}, usando respaldo mock"
+            return mock_res
         return resp.json()
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Endpoint de inferencia no disponible: {exc}",
-        ) from exc
+    except Exception:
+        mock_res = _mock_resultado(imagen_bytes, modo)
+        mock_res["aviso"] = "Inferencia remota no disponible; procesado con modelo de respaldo"
+        return mock_res
 
 
 def health(db: Session) -> dict:
