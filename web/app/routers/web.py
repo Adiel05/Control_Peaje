@@ -40,7 +40,10 @@ if settings.google_client_id and settings.google_client_secret:
         client_id=settings.google_client_id,
         client_secret=settings.google_client_secret,
         server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-        client_kwargs={"scope": "openid email profile"},
+        client_kwargs={
+            "scope": "openid email profile",
+            "prompt": "select_account",
+        },
     )
 
 router = APIRouter(include_in_schema=False)
@@ -62,13 +65,20 @@ def _ctx_base(request: Request, usuario: Usuario, pagina: str, **extra) -> dict:
 
 @router.get("/login")
 def pagina_login(request: Request, usuario: Usuario | None = Depends(usuario_opcional)):
-    if usuario:
-        return RedirectResponse(url="/", status_code=303)
+    cambiar = request.query_params.get("cambiar") == "1"
+    if cambiar and "session" in request.scope:
+        request.session.clear()
+        usuario = None
+
     oauth_listo = bool(settings.google_client_id and settings.google_client_secret)
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"oauth_listo": oauth_listo},
+        {
+            "oauth_listo": oauth_listo,
+            "usuario": usuario,
+            "admin_emails": settings.admin_emails,
+        },
     )
 
 
@@ -84,7 +94,11 @@ async def google_login(request: Request):
         if settings.base_url
         else str(request.url_for("auth_callback"))
     )
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    return await oauth.google.authorize_redirect(
+        request,
+        redirect_uri,
+        prompt="select_account",
+    )
 
 
 @router.get("/auth/callback", name="auth_callback")
@@ -103,12 +117,23 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
     ).scalar_one_or_none()
 
     if not usuario or not usuario.activo:
-        return templates.TemplateResponse(
-            request,
-            "acceso_denegado.html",
-            {"email": email or "desconocido"},
-            status_code=403,
-        )
+        if email in settings.admin_emails:
+            usuario = Usuario(
+                email_google=email,
+                nombre=userinfo.get("name") or "Administrador",
+                rol="admin",
+                activo=True,
+            )
+            db.add(usuario)
+            db.commit()
+            db.refresh(usuario)
+        else:
+            return templates.TemplateResponse(
+                request,
+                "acceso_denegado.html",
+                {"email": email or "desconocido"},
+                status_code=403,
+            )
 
     if not usuario.nombre and userinfo.get("name"):
         usuario.nombre = str(userinfo["name"])[:150]
@@ -121,7 +146,7 @@ async def auth_callback(request: Request, db: Session = Depends(get_db)):
 @router.get("/logout")
 def logout(request: Request):
     request.session.clear()
-    return RedirectResponse(url="/login", status_code=303)
+    return RedirectResponse(url="/login?cambiar=1", status_code=303)
 
 
 @router.get("/")

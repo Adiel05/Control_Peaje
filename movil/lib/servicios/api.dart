@@ -23,8 +23,24 @@ class ApiService {
     }
   }
 
+  /// Verifica el estado de salud y latencia del backend.
+  static Future<Map<String, dynamic>> probarConexion([String? customBase]) async {
+    final base = customBase ?? await AppConfig.getApiBase();
+    final uri = Uri.parse('$base/api/v1/diagnostico/resumen');
+    final stopwatch = Stopwatch()..start();
+    final resp = await http.get(uri).timeout(const Duration(seconds: 8));
+    stopwatch.stop();
+    return {
+      'ok': resp.statusCode == 200,
+      'status': resp.statusCode,
+      'latencia_ms': stopwatch.elapsedMilliseconds,
+      'base': base,
+    };
+  }
+
   static Future<List<Map<String, dynamic>>> casetas() async {
-    final uri = Uri.parse('${AppConfig.apiBase}/api/v1/casetas');
+    final base = await AppConfig.getApiBase();
+    final uri = Uri.parse('$base/api/v1/casetas');
     final resp = await http.get(uri, headers: await _headers());
     _verificar401(resp.statusCode);
     if (resp.statusCode != 200) {
@@ -35,7 +51,8 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> enviarFrame(Uint8List bytes, int casetaId) async {
-    final uri = Uri.parse('${AppConfig.apiBase}/api/v1/pasos/frame');
+    final base = await AppConfig.getApiBase();
+    final uri = Uri.parse('$base/api/v1/pasos/frame');
     final req = http.MultipartRequest('POST', uri)
       ..headers.addAll(await _headers())
       ..fields['caseta_id'] = casetaId.toString()
@@ -51,7 +68,8 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> consultarPlaca(String placa) async {
-    final uri = Uri.parse('${AppConfig.apiBase}/api/v1/placas/consultar');
+    final base = await AppConfig.getApiBase();
+    final uri = Uri.parse('$base/api/v1/placas/consultar');
     final headers = await _headers();
     headers['Content-Type'] = 'application/json';
     final resp = await http.post(
@@ -71,7 +89,8 @@ class ApiService {
     Uint8List? imagenBytes,
     List<Map<String, String>>? historial,
   }) async {
-    final uri = Uri.parse('${AppConfig.apiBase}/api/v1/agente/chat');
+    final base = await AppConfig.getApiBase();
+    final uri = Uri.parse('$base/api/v1/agente/chat');
     final req = http.MultipartRequest('POST', uri)..headers.addAll(await _headers());
     if (mensaje != null && mensaje.trim().isNotEmpty) {
       req.fields['mensaje'] = mensaje.trim();

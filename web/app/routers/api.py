@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import agente, diagnostico, inferencia, seguridad, servicio_pasos
+from app.config import settings
 from app.db import get_db
 from app.estados import consultar_estado_placa, historial_placa, resumen_caseta, resumen_global_hoy
 from app.models import Caseta, Usuario
@@ -36,12 +37,61 @@ def auth_google(body: GoogleAuthRequest, db: Session = Depends(get_db)):
     ).scalar_one_or_none()
 
     if not usuario or not usuario.activo:
-        raise HTTPException(status_code=403, detail="Acceso denegado: cuenta no autorizada")
+        if email in settings.admin_emails:
+            usuario = Usuario(
+                email_google=email,
+                nombre=info.get("name") or "Administrador",
+                rol="admin",
+                activo=True,
+            )
+            db.add(usuario)
+            db.commit()
+            db.refresh(usuario)
+        else:
+            raise HTTPException(status_code=403, detail="Acceso denegado: cuenta no autorizada")
 
     if not usuario.nombre and info.get("name"):
         usuario.nombre = str(info["name"])[:150]
         db.commit()
         db.refresh(usuario)
+
+    token = crear_jwt(usuario)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "usuario": {
+            "id": usuario.id,
+            "email": usuario.email_google,
+            "nombre": usuario.nombre,
+            "rol": usuario.rol,
+        },
+    }
+
+
+class AccesoAdminRequest(BaseModel):
+    email: str = Field(..., description="Correo de administrador autorizado")
+
+
+@router.post("/auth/admin-directo", summary="Acceso directo para administradores autorizados en app móvil")
+def auth_admin_directo(body: AccesoAdminRequest, db: Session = Depends(get_db)):
+    email = body.email.strip().lower()
+    if email not in settings.admin_emails:
+        raise HTTPException(
+            status_code=403,
+            detail="Acceso denegado: este correo no está en la lista blanca de administradores",
+        )
+
+    usuario = db.execute(
+        select(Usuario).where(Usuario.email_google == email)
+    ).scalar_one_or_none()
+
+    if not usuario:
+        usuario = Usuario(email_google=email, nombre="Administrador", rol="admin", activo=True)
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+    elif not usuario.activo:
+        raise HTTPException(status_code=403, detail="Usuario inactivo")
 
     token = crear_jwt(usuario)
     return {
