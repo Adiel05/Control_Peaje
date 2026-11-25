@@ -31,6 +31,7 @@ class _CasetaPantallaState extends State<CasetaPantalla> {
   Uint8List? _ultimaImagenAnotada;
   bool _verIaEnVivo = true;
   bool _esMock = false;
+  bool _esM1Local = false;
   String? _avisoInferencia;
   String _estadoInfo = 'Listo para capturar';
 
@@ -136,6 +137,7 @@ class _CasetaPantallaState extends State<CasetaPantalla> {
           _ultimaImagenAnotada = anotadaBytes;
         }
         _esMock = resp['mock'] == true;
+        _esM1Local = resp['modo_m1_local'] == true;
         _avisoInferencia = resp['aviso']?.toString();
         _ultimaDeteccion = resp;
 
@@ -170,6 +172,82 @@ class _CasetaPantallaState extends State<CasetaPantalla> {
     final ar = _camara!.value.aspectRatio;
     // En modo vertical, el sensor reporta ancho/alto > 1; invertimos para no estirar.
     return ar > 1.0 ? (1.0 / ar) : ar;
+  }
+
+  void _dialogoUrlColab() {
+    final ctrl = TextEditingController();
+    bool guardando = false;
+    String? msg;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Conectar URL de Google Colab', style: TextStyle(fontSize: 17)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Ejecuta servidor_colab.ipynb en Google Colab. Si no se registró sola, pega aquí la URL trycloudflare.com:',
+                style: TextStyle(fontSize: 12.5, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: ctrl,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: 'https://xxxx.trycloudflare.com',
+                  isDense: true,
+                ),
+              ),
+              if (msg != null) ...[
+                const SizedBox(height: 8),
+                Text(msg!, style: const TextStyle(fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cerrar')),
+            FilledButton(
+              onPressed: guardando
+                  ? null
+                  : () async {
+                      setDlg(() {
+                        guardando = true;
+                        msg = 'Verificando con Render y Colab...';
+                      });
+                      try {
+                        final r = await ApiService.actualizarUrlInferencia(ctrl.text);
+                        final ok = r['salud']?['ok'] == true;
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (mounted) {
+                          setState(() {
+                            _avisoInferencia = null;
+                            _esMock = false;
+                            _esM1Local = false;
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(ok
+                                  ? '✅ Colab conectado y respondiendo'
+                                  : 'URL guardada, pero Colab aún no responde /health'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDlg(() {
+                          guardando = false;
+                          msg = 'Error: $e';
+                        });
+                      }
+                    },
+              child: const Text('Conectar'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -229,19 +307,28 @@ class _CasetaPantallaState extends State<CasetaPantalla> {
               ),
               const SizedBox(width: 8),
               if (_ultimaDeteccion != null)
-                Chip(
+                ActionChip(
                   avatar: Icon(
-                    _esMock ? Icons.warning_amber_rounded : Icons.check_circle,
+                    (_esMock || _esM1Local) ? Icons.warning_amber_rounded : Icons.check_circle,
                     color: Colors.white,
                     size: 16,
                   ),
                   label: Text(
-                    _esMock ? 'Mock' : 'IA Colab',
+                    _esMock ? 'Mock' : (_esM1Local ? 'M1 Local' : 'IA Colab'),
                     style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                   ),
-                  backgroundColor: _esMock ? Colors.orange.shade700 : Colors.green.shade700,
+                  backgroundColor: _esMock
+                      ? Colors.orange.shade700
+                      : (_esM1Local ? Colors.blueGrey.shade700 : Colors.green.shade700),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
+                  onPressed: _dialogoUrlColab,
+                ),
+              if (_ultimaDeteccion == null)
+                IconButton(
+                  onPressed: _dialogoUrlColab,
+                  icon: const Icon(Icons.cloud_sync_outlined),
+                  tooltip: 'Conectar URL Colab',
                 ),
             ],
           ),

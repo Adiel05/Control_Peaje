@@ -2,14 +2,24 @@
 {% block title %}Panel en tiempo real · Control de Peaje{% endblock %}
 {% block content %}
 <div id="toast-container" class="toast-container"></div>
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem;">
-  <h2 style="margin:0;">Panel en tiempo real</h2>
-  <span id="sse-estado" class="badge badge-muted">Conectando SSE...</span>
+<div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0.6rem;margin-bottom:0.85rem;">
+  <div>
+    <h2 style="margin:0;">Panel de Control en Tiempo Real</h2>
+    <div style="font-size:0.83rem;color:var(--muted);margin-top:0.15rem;">
+      Motor IA configurado: <a href="/estado"><code>{{ inference_url }}</code></a>
+      · <a href="/chat">Consultar Agente IA</a>
+      · <a href="/docs" target="_blank">API REST (/docs)</a>
+    </div>
+  </div>
+  <div style="display:flex;gap:0.5rem;align-items:center;">
+    <span id="motor-badge" class="badge badge-info">Motor listo</span>
+    <span id="sse-estado" class="badge badge-muted">Conectando SSE...</span>
+  </div>
 </div>
 
 <div class="grid-3">
   <div class="card">
-    <div class="kpi-label">Pasos de hoy</div>
+    <div class="kpi-label">Pasos registrados hoy</div>
     <div id="kpi-pasos" class="kpi-value">{{ resumen.pasos_hoy }}</div>
   </div>
   <div class="card">
@@ -22,13 +32,79 @@
   </div>
 </div>
 
+<div class="grid-2" style="margin-bottom:1rem;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+      <h3 style="margin:0;">Monitor IA en Vivo (M1 · M2 · M3 · Pasajeros)</h3>
+      <span id="vivo-caseta" class="badge badge-muted">
+        {% if ultimo_paso %}{{ ultimo_paso.caseta.nombre if ultimo_paso.caseta else 'Último paso' }}{% else %}Esperando señal{% endif %}
+      </span>
+    </div>
+    <div class="live-monitor-frame">
+      <img
+        id="vivo-imagen"
+        src="{{ ultimo_paso.imagen_url if (ultimo_paso and ultimo_paso.imagen_url) else '' }}"
+        alt="Detección IA en vivo"
+        style="{{ '' if (ultimo_paso and ultimo_paso.imagen_url) else 'display:none;' }}"
+      >
+      <div id="vivo-placeholder" style="{{ 'display:none;' if (ultimo_paso and ultimo_paso.imagen_url) else '' }}color:#94a3b8;padding:2.5rem 1rem;text-align:center;">
+        Transmite desde la <strong>App Móvil</strong> o analiza una imagen a la derecha para ver las máscaras de segmentación, keypoints de ruedas y lectura OCR en vivo.
+      </div>
+    </div>
+    <div id="vivo-aviso" class="flash flash-err" style="display:none;margin-top:0.6rem;margin-bottom:0;font-size:0.82rem;"></div>
+    <div class="live-telemetry-bar" id="vivo-datos">
+      <span><strong>Placa:</strong> <span id="vivo-placa">{{ ultimo_paso.placa_normalizada if ultimo_paso else '---' }}</span></span>
+      <span><strong>Tipo (M2):</strong> <span id="vivo-cat">{{ ultimo_paso.categoria_detectada if ultimo_paso else '---' }}</span></span>
+      <span><strong>Ejes (M3):</strong> <span id="vivo-ejes">{{ ultimo_paso.ejes_detectados if ultimo_paso else '-' }}</span></span>
+      <span><strong>Pasajeros:</strong> <span id="vivo-pas">{{ ultimo_paso.pasajeros if (ultimo_paso and ultimo_paso.pasajeros is not none) else '-' }}</span></span>
+      <span><strong>Latencia:</strong> <span id="vivo-lat">{{ (ultimo_paso.latencia_ms ~ ' ms') if (ultimo_paso and ultimo_paso.latencia_ms) else '-' }}</span></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0;">Probar / Registrar Paso desde Web</h3>
+    <p style="margin-top:0;font-size:0.86rem;color:var(--muted);">
+      Sube una fotografía vehicular o usa la cámara web de tu PC para ejecutar el pipeline completo (M1 + M2 + M3 + Pasajeros), cobrar tarifa en BD y transmitir por SSE en tiempo real.
+    </p>
+    <form id="form-probar-web" style="display:flex;flex-direction:column;gap:0.75rem;">
+      <div class="field">
+        <label>Caseta de peaje</label>
+        <select id="web-caseta" name="caseta_id" required>
+          {% for c in casetas %}
+          <option value="{{ c.id }}">{{ c.nombre }} ({{ c.ubicacion }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label>Fotografía de vehículo (JPG / PNG / WebP)</label>
+        <input type="file" id="web-imagen" name="imagen" accept="image/*" required>
+      </div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+        <button type="submit" id="btn-probar-web" class="btn">Analizar con IA y Registrar Paso</button>
+        <button type="button" id="btn-camara-pc" class="btn btn-secondary">Usar cámara PC</button>
+      </div>
+    </form>
+    <div id="box-camara-pc" style="display:none;margin-top:0.75rem;">
+      <video id="video-pc" autoplay playsinline style="width:100%;max-height:200px;background:#000;border-radius:8px;"></video>
+      <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+        <button type="button" id="btn-capturar-pc" class="btn btn-sm">Capturar fotograma</button>
+        <button type="button" id="btn-cerrar-pc" class="btn btn-sm btn-outline">Cerrar cámara</button>
+      </div>
+    </div>
+    <div id="web-resultado" style="margin-top:0.75rem;font-size:0.88rem;"></div>
+  </div>
+</div>
+
 <div class="card">
-  <h3 style="margin-top:0;">Últimos pasos registrados</h3>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+    <h3 style="margin:0;">Últimos pasos registrados (actualización automática SSE)</h3>
+    <a href="/pasos" style="font-size:0.88rem;">Historial completo →</a>
+  </div>
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>Evidencia</th>
+          <th>Evidencia IA</th>
           <th>Placa</th>
           <th>Categoría</th>
           <th>Ejes</th>
@@ -91,7 +167,7 @@
       {% if a.atendida %}<span class="badge badge-ok">Atendida</span>{% endif %}
     </li>
     {% else %}
-    <li style="color:var(--muted);">No hay alertas registradas.</li>
+    <li id="alertas-vacia" style="color:var(--muted);">No hay alertas registradas.</li>
     {% endfor %}
   </ul>
 </div>

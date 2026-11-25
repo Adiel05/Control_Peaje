@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date
 
+import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -13,7 +15,7 @@ from app import agente, diagnostico, inferencia, seguridad, servicio_pasos
 from app.config import settings
 from app.db import get_db
 from app.estados import consultar_estado_placa, historial_placa, resumen_caseta, resumen_global_hoy
-from app.models import Caseta, Usuario
+from app.models import Caseta, Configuracion, Usuario
 from app.placas import normalizar
 from app.seguridad import crear_jwt, requiere_admin, usuario_api
 
@@ -242,6 +244,82 @@ async def chat_agente(
 @router.get("/panel/resumen", summary="Resumen global del día para el panel")
 def obtener_panel_resumen(usuario: Usuario = Depends(usuario_api), db: Session = Depends(get_db)):
     return resumen_global_hoy(db)
+
+
+@router.get("/ping", summary="Ping público de conectividad del backend")
+def ping_publico(db: Session = Depends(get_db)):
+    return {
+        "ok": True,
+        "servicio": "peaje-web",
+        "inference_url": inferencia.url_efectiva(db),
+    }
+
+
+class RegistrarInferenciaRequest(BaseModel):
+    inference_url: str = Field(..., description="URL HTTPS del túnel de inferencia (Cloudflare / RunPod)")
+    api_key: str = Field("", description="Clave INFERENCE_API_KEY opcional")
+
+
+_PATRON_TUNEL_SEGURO = re.compile(
+    r"^https://[a-zA-Z0-9.-]+\.(trycloudflare\.com|ngrok-free\.app|ngrok\.io|proxy\.runpod\.net)$"
+)
+
+
+@router.post("/inferencia/registrar-url", summary="Auto-registrar URL activa de Google Colab / Cloudflare")
+def registrar_url_inferencia(body: RegistrarInferenciaRequest, db: Session = Depends(get_db)):
+    url_limpia = body.inference_url.strip().rstrip("/")
+    clave_esperada = (settings.inference_api_key or "").strip()
+
+    if clave_esperada and body.api_key.strip() and body.api_key.strip() != clave_esperada:
+        raise HTTPException(status_code=403, detail="INFERENCE_API_KEY no coincide")
+
+    if not _PATRON_TUNEL_SEGURO.match(url_limpia):
+        raise HTTPException(
+            status_code=400,
+            detail="Solo se admiten túneles HTTPS válidos (trycloudflare.com / ngrok / runpod)",
+        )
+
+    # Verificar que realmente sea un servidor de inferencia de Control de Peaje activo
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(f"{url_limpia}/health")
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"El túnel respondió HTTP {r.status_code} en /health")
+        datos = r.json()
+        if not isinstance(datos, dict) or "modelos" not in datos:
+            raise HTTPException(status_code=502, detail="Respuesta /health inválida del servidor de inferencia")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"No se pudo verificar el túnel {url_limpia}: {exc}") from exc
+
+    cfg = db.get(Configuracion, "INFERENCE_URL")
+    if cfg:
+        cfg.valor = url_limpia
+    else:
+        db.add(Configuracion(clave="INFERENCE_URL", valor=url_limpia))
+    db.commit()
+    return {"ok": True, "inference_url": url_limpia, "modelos": datos.get("modelos")}
+
+
+class ActualizarInferenciaAdminRequest(BaseModel):
+    inference_url: str = Field(..., description="URL de inferencia o 'mock' / 'local'")
+
+
+@router.post("/estado/inferencia", summary="Actualizar INFERENCE_URL como administrador (app móvil o API)")
+def actualizar_inferencia_api(
+    body: ActualizarInferenciaAdminRequest,
+    usuario: Usuario = Depends(requiere_admin),
+    db: Session = Depends(get_db),
+):
+    nueva_url = body.inference_url.strip().rstrip("/") or "mock"
+    cfg = db.get(Configuracion, "INFERENCE_URL")
+    if cfg:
+        cfg.valor = nueva_url
+    else:
+        db.add(Configuracion(clave="INFERENCE_URL", valor=nueva_url))
+    db.commit()
+    return {"ok": True, "inference_url": nueva_url, "salud": inferencia.health(db)}
 
 
 @router.get("/estado/inferencia", summary="Verificar conectividad y salud del endpoint de inferencia")

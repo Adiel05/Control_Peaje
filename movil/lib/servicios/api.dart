@@ -26,9 +26,9 @@ class ApiService {
   /// Verifica el estado de salud y latencia del backend.
   static Future<Map<String, dynamic>> probarConexion([String? customBase]) async {
     final base = customBase ?? await AppConfig.getApiBase();
-    final uri = Uri.parse('$base/api/v1/diagnostico/resumen');
+    final uri = Uri.parse('$base/api/v1/ping');
     final stopwatch = Stopwatch()..start();
-    final resp = await http.get(uri).timeout(const Duration(seconds: 8));
+    final resp = await http.get(uri).timeout(const Duration(seconds: 10));
     stopwatch.stop();
     return {
       'ok': resp.statusCode == 200,
@@ -36,6 +36,22 @@ class ApiService {
       'latencia_ms': stopwatch.elapsedMilliseconds,
       'base': base,
     };
+  }
+
+  /// Actualiza la URL del túnel de inferencia (Colab) directamente desde la app.
+  static Future<Map<String, dynamic>> actualizarUrlInferencia(String url) async {
+    final base = await AppConfig.getApiBase();
+    final uri = Uri.parse('$base/api/v1/estado/inferencia');
+    final headers = await _headers();
+    headers['Content-Type'] = 'application/json';
+    final resp = await http
+        .post(uri, headers: headers, body: jsonEncode({'inference_url': url.trim()}))
+        .timeout(const Duration(seconds: 15));
+    _verificar401(resp.statusCode);
+    if (resp.statusCode != 200) {
+      throw Exception('HTTP ${resp.statusCode}: ${resp.body}');
+    }
+    return jsonDecode(resp.body) as Map<String, dynamic>;
   }
 
   static Future<List<Map<String, dynamic>>> casetas() async {

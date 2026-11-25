@@ -5,13 +5,13 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
-from app import inferencia
+from app import inferencia, servicio_pasos
 from app.config import settings
 from app.db import get_db
 from app.estados import formatear_fecha_lp, resumen_global_hoy
@@ -189,11 +189,48 @@ def panel_principal(
         _, fecha_legible = formatear_fecha_lp(a.created_at)
         alertas.append({"obj": a, "fecha_legible": fecha_legible})
 
+    casetas = db.execute(select(Caseta).order_by(Caseta.id.asc())).scalars().all()
+    ultimo_paso = pasos[0]["obj"] if pasos else None
+
     return templates.TemplateResponse(
         request,
         "panel.html",
-        _ctx_base(request, usuario, "panel", resumen=resumen, pasos=pasos, alertas=alertas),
+        _ctx_base(
+            request,
+            usuario,
+            "panel",
+            resumen=resumen,
+            pasos=pasos,
+            alertas=alertas,
+            casetas=casetas,
+            ultimo_paso=ultimo_paso,
+            inference_url=inferencia.url_efectiva(db),
+        ),
     )
+
+
+@router.post("/panel/probar-frame")
+async def probar_frame_web(
+    caseta_id: int = Form(...),
+    imagen: UploadFile = File(...),
+    usuario: Usuario | None = Depends(usuario_opcional),
+    db: Session = Depends(get_db),
+):
+    if not usuario:
+        raise HTTPException(status_code=401, detail="Sesión expirada")
+    contenido = await imagen.read()
+    if not contenido:
+        raise HTTPException(status_code=400, detail="Imagen vacía")
+    try:
+        resultado = servicio_pasos.procesar_frame(
+            db=db,
+            usuario=usuario,
+            caseta_id=caseta_id,
+            imagen_bytes=contenido,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return JSONResponse(resultado)
 
 
 @router.get("/vehiculos")

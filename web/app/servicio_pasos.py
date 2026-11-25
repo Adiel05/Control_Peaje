@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+import time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -38,6 +39,18 @@ def serializar_paso(paso: Paso, caseta_nombre: str | None = None) -> dict:
     }
 
 
+_ultimo_frame_sse_ts = 0.0
+
+
+def _publicar_deteccion_vivo(caseta_nombre: str, payload: dict, forzar: bool = False) -> None:
+    global _ultimo_frame_sse_ts
+    ahora_ts = time.monotonic()
+    if not forzar and (ahora_ts - _ultimo_frame_sse_ts) < 0.75:
+        return
+    _ultimo_frame_sse_ts = ahora_ts
+    broadcaster.publicar("deteccion_vivo", {"caseta": caseta_nombre, **payload})
+
+
 def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_bytes: bytes) -> dict:
     """Procesa un frame capturado desde la caseta y registra el paso si corresponde."""
     caseta = db.get(Caseta, caseta_id)
@@ -57,21 +70,26 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
         "latencia_ms": res.get("latencia_ms"),
         "latencias": res.get("latencias"),
         "mock": bool(res.get("mock", False)),
+        "modo_m1_local": bool(res.get("modo_m1_local", False)),
         "aviso": res.get("aviso"),
     }
 
     if not placa_norm:
-        return {"registrado": False, "motivo": "sin_placa", **meta_visual, "inferencia": res}
+        salida = {"registrado": False, "motivo": "sin_placa", **meta_visual, "inferencia": res}
+        _publicar_deteccion_vivo(caseta.nombre, {"registrado": False, "motivo": "sin_placa", "placa": "", **meta_visual})
+        return salida
 
     conf = float(res.get("confianza") or 0.0)
     if not formato_valido(placa_norm) and conf < 0.7:
-        return {
+        salida = {
             "registrado": False,
             "motivo": "lectura_dudosa",
             "placa": placa_norm,
             **meta_visual,
             "inferencia": res,
         }
+        _publicar_deteccion_vivo(caseta.nombre, {"registrado": False, "motivo": "lectura_dudosa", "placa": placa_norm, **meta_visual})
+        return salida
 
     ahora = datetime.now(timezone.utc)
     ultimo_misma_placa = db.execute(
@@ -84,13 +102,15 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
     if ultimo_misma_placa is not None:
         delta = ahora - a_utc(ultimo_misma_placa.created_at)
         if delta < timedelta(seconds=settings.dedup_segundos):
-            return {
+            salida = {
                 "registrado": False,
                 "motivo": "duplicado",
                 "placa": placa_norm,
                 **meta_visual,
                 "paso": serializar_paso(ultimo_misma_placa, caseta.nombre),
             }
+            _publicar_deteccion_vivo(caseta.nombre, {"registrado": False, "motivo": "duplicado", "placa": placa_norm, **meta_visual})
+            return salida
 
     vehiculo = db.execute(
         select(Vehiculo).where(Vehiculo.placa == placa_norm)
@@ -161,6 +181,17 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
             },
         )
     broadcaster.publicar("contadores", resumen_global_hoy(db))
+    _publicar_deteccion_vivo(
+        caseta.nombre,
+        {
+            "registrado": True,
+            "placa": paso.placa_normalizada,
+            "estado": paso.estado,
+            "monto": float(paso.monto),
+            **meta_visual,
+        },
+        forzar=True,
+    )
 
     return {
         "registrado": True,
@@ -168,6 +199,7 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
         "placa": paso.placa_normalizada,
         "categoria": paso.categoria_detectada,
         "ejes": paso.ejes_detectados,
+        "ruedas": res.get("ruedas"),
         "monto": float(paso.monto),
         "estado": paso.estado,
         "pasajeros": paso.pasajeros,
@@ -176,5 +208,6 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
         "latencias": res.get("latencias"),
         "imagen_anotada": res.get("imagen_anotada"),
         "mock": bool(res.get("mock", False)),
+        "modo_m1_local": bool(res.get("modo_m1_local", False)),
         "aviso": res.get("aviso"),
     }
