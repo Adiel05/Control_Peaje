@@ -12,6 +12,6 @@ requests==2.34.2
 pyjwt==2.15.1
 google-genai==3.6.1
 tzdata==2026.6
-onnxruntime>=1.20.0
-fast-plate-ocr>=1.0.0
-opencv-python-headless>=4.10.0
+onnxruntime==1.32.0
+fast-plate-ocr==1.1.0
+opencv-python-headless==5.1.0.95

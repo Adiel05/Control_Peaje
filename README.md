@@ -107,7 +107,7 @@ Cada servicio define sus dependencias fijadas:
 ## Enlaces del proyecto (completar antes de la entrega)
 
 - **Guía paso a paso de configuración y despliegue:** [`docs/guia_usuario_pasos.md`](docs/guia_usuario_pasos.md)
-- **Aplicación web (HTTPS):** `https://<pendiente-render>.onrender.com`
+- **Aplicación web (HTTPS):** [`https://peaje-web.onrender.com`](https://peaje-web.onrender.com) (Swagger OpenAPI en [`https://peaje-web.onrender.com/docs`](https://peaje-web.onrender.com/docs))
 - **Endpoint de inferencia (Colab):** Configurable dinámicamente en `/estado` (`INFERENCE_URL`)
 - **Dataset M2 (Roboflow):** `<pendiente-url-roboflow-m2>`
 - **Dataset M3 (Roboflow):** `<pendiente-url-roboflow-m3>`

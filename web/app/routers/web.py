@@ -1,9 +1,11 @@
 """Rutas HTML (Jinja2), autenticación web Google OAuth, SSE y evidencias."""
 from __future__ import annotations
 
+import re
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+import httpx
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
@@ -525,6 +527,46 @@ def actualizar_inference_url(
         db.add(Configuracion(clave="INFERENCE_URL", valor=nueva_url))
     db.commit()
     return RedirectResponse(url="/estado?msg=URL+de+inferencia+actualizada", status_code=303)
+
+
+_PATRON_TUNEL_SEGURO = re.compile(
+    r"^https://[a-zA-Z0-9.-]+\.(trycloudflare\.com|ngrok-free\.app|ngrok\.io|proxy\.runpod\.net)$"
+)
+
+
+@router.post("/estado/auto-colab")
+async def auto_registrar_colab(request: Request, db: Session = Depends(get_db)):
+    """Permite que el notebook de Colab registre automáticamente su túnel activo tras verificar /health."""
+    body = await request.json()
+    url_limpia = str(body.get("inference_url") or "").strip().rstrip("/")
+    api_key = str(body.get("api_key") or "").strip()
+    clave_esperada = (settings.inference_api_key or "").strip()
+
+    if clave_esperada and api_key and api_key != clave_esperada:
+        raise HTTPException(status_code=403, detail="INFERENCE_API_KEY no coincide")
+    if not _PATRON_TUNEL_SEGURO.match(url_limpia):
+        raise HTTPException(status_code=400, detail="URL de túnel inválida")
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(f"{url_limpia}/health")
+        if r.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"HTTP {r.status_code} en /health")
+        datos = r.json()
+        if not isinstance(datos, dict) or "modelos" not in datos:
+            raise HTTPException(status_code=502, detail="Respuesta /health inválida")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"No se pudo verificar {url_limpia}: {exc}") from exc
+
+    cfg = db.get(Configuracion, "INFERENCE_URL")
+    if cfg:
+        cfg.valor = url_limpia
+    else:
+        db.add(Configuracion(clave="INFERENCE_URL", valor=url_limpia))
+    db.commit()
+    return JSONResponse({"ok": True, "inference_url": url_limpia, "modelos": datos.get("modelos")})
 
 
 @router.post("/estado/token")

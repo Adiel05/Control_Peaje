@@ -9,7 +9,7 @@ class AppConfig {
 
   static const String webClientId = String.fromEnvironment(
     'GOOGLE_WEB_CLIENT_ID',
-    defaultValue: '1046512061572-n3ss9og34705hdk1vf4nr604sdj90oal.apps.googleusercontent.com',
+    defaultValue: '',
   );
 
   static const String _kApiBaseKey = 'peaje_api_base_url_custom';

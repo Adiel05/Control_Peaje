@@ -208,3 +208,14 @@ def test_paginas_web_redirigen_sin_sesion_y_abren_con_bearer(client, admin_heade
 
         r_auth = client.get(ruta, headers=admin_headers)
         assert r_auth.status_code == 200
+
+
+def test_todas_las_rutas_api_exigen_autenticacion_excepto_auth_google(client):
+    esquema = client.get("/openapi.json").json()
+    for ruta, metodos in esquema["paths"].items():
+        if ruta == "/api/v1/auth/google":
+            continue
+        ruta_prueba = ruta.replace("{placa}", "1234ABC").replace("{caseta_id}", "1")
+        for metodo in metodos:
+            resp = client.request(metodo.upper(), ruta_prueba)
+            assert resp.status_code == 401, f"{metodo.upper()} {ruta} no exigió autenticación ({resp.status_code})"

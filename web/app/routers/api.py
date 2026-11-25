@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import date
 
-import httpx
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -56,44 +54,6 @@ def auth_google(body: GoogleAuthRequest, db: Session = Depends(get_db)):
         usuario.nombre = str(info["name"])[:150]
         db.commit()
         db.refresh(usuario)
-
-    token = crear_jwt(usuario)
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "usuario": {
-            "id": usuario.id,
-            "email": usuario.email_google,
-            "nombre": usuario.nombre,
-            "rol": usuario.rol,
-        },
-    }
-
-
-class AccesoAdminRequest(BaseModel):
-    email: str = Field(..., description="Correo de administrador autorizado")
-
-
-@router.post("/auth/admin-directo", summary="Acceso directo para administradores autorizados en app móvil")
-def auth_admin_directo(body: AccesoAdminRequest, db: Session = Depends(get_db)):
-    email = body.email.strip().lower()
-    if email not in settings.admin_emails:
-        raise HTTPException(
-            status_code=403,
-            detail="Acceso denegado: este correo no está en la lista blanca de administradores",
-        )
-
-    usuario = db.execute(
-        select(Usuario).where(Usuario.email_google == email)
-    ).scalar_one_or_none()
-
-    if not usuario:
-        usuario = Usuario(email_google=email, nombre="Administrador", rol="admin", activo=True)
-        db.add(usuario)
-        db.commit()
-        db.refresh(usuario)
-    elif not usuario.activo:
-        raise HTTPException(status_code=403, detail="Usuario inactivo")
 
     token = crear_jwt(usuario)
     return {
@@ -244,62 +204,6 @@ async def chat_agente(
 @router.get("/panel/resumen", summary="Resumen global del día para el panel")
 def obtener_panel_resumen(usuario: Usuario = Depends(usuario_api), db: Session = Depends(get_db)):
     return resumen_global_hoy(db)
-
-
-@router.get("/ping", summary="Ping público de conectividad del backend")
-def ping_publico(db: Session = Depends(get_db)):
-    return {
-        "ok": True,
-        "servicio": "peaje-web",
-        "inference_url": inferencia.url_efectiva(db),
-    }
-
-
-class RegistrarInferenciaRequest(BaseModel):
-    inference_url: str = Field(..., description="URL HTTPS del túnel de inferencia (Cloudflare / RunPod)")
-    api_key: str = Field("", description="Clave INFERENCE_API_KEY opcional")
-
-
-_PATRON_TUNEL_SEGURO = re.compile(
-    r"^https://[a-zA-Z0-9.-]+\.(trycloudflare\.com|ngrok-free\.app|ngrok\.io|proxy\.runpod\.net)$"
-)
-
-
-@router.post("/inferencia/registrar-url", summary="Auto-registrar URL activa de Google Colab / Cloudflare")
-def registrar_url_inferencia(body: RegistrarInferenciaRequest, db: Session = Depends(get_db)):
-    url_limpia = body.inference_url.strip().rstrip("/")
-    clave_esperada = (settings.inference_api_key or "").strip()
-
-    if clave_esperada and body.api_key.strip() and body.api_key.strip() != clave_esperada:
-        raise HTTPException(status_code=403, detail="INFERENCE_API_KEY no coincide")
-
-    if not _PATRON_TUNEL_SEGURO.match(url_limpia):
-        raise HTTPException(
-            status_code=400,
-            detail="Solo se admiten túneles HTTPS válidos (trycloudflare.com / ngrok / runpod)",
-        )
-
-    # Verificar que realmente sea un servidor de inferencia de Control de Peaje activo
-    try:
-        with httpx.Client(timeout=10.0) as client:
-            r = client.get(f"{url_limpia}/health")
-        if r.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"El túnel respondió HTTP {r.status_code} en /health")
-        datos = r.json()
-        if not isinstance(datos, dict) or "modelos" not in datos:
-            raise HTTPException(status_code=502, detail="Respuesta /health inválida del servidor de inferencia")
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"No se pudo verificar el túnel {url_limpia}: {exc}") from exc
-
-    cfg = db.get(Configuracion, "INFERENCE_URL")
-    if cfg:
-        cfg.valor = url_limpia
-    else:
-        db.add(Configuracion(clave="INFERENCE_URL", valor=url_limpia))
-    db.commit()
-    return {"ok": True, "inference_url": url_limpia, "modelos": datos.get("modelos")}
 
 
 class ActualizarInferenciaAdminRequest(BaseModel):

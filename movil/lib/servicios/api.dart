@@ -26,7 +26,7 @@ class ApiService {
   /// Verifica el estado de salud y latencia del backend.
   static Future<Map<String, dynamic>> probarConexion([String? customBase]) async {
     final base = customBase ?? await AppConfig.getApiBase();
-    final uri = Uri.parse('$base/api/v1/ping');
+    final uri = Uri.parse('$base/login');
     final stopwatch = Stopwatch()..start();
     final resp = await http.get(uri).timeout(const Duration(seconds: 10));
     stopwatch.stop();

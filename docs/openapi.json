@@ -45,45 +45,6 @@
         }
       }
     },
-    "/api/v1/auth/admin-directo": {
-      "post": {
-        "tags": [
-          "API Peaje v1"
-        ],
-        "summary": "Acceso directo para administradores autorizados en app móvil",
-        "operationId": "auth_admin_directo_api_v1_auth_admin_directo_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AccesoAdminRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/auth/me": {
       "get": {
         "tags": [
@@ -448,64 +409,6 @@
         ]
       }
     },
-    "/api/v1/ping": {
-      "get": {
-        "tags": [
-          "API Peaje v1"
-        ],
-        "summary": "Ping público de conectividad del backend",
-        "operationId": "ping_publico_api_v1_ping_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/inferencia/registrar-url": {
-      "post": {
-        "tags": [
-          "API Peaje v1"
-        ],
-        "summary": "Auto-registrar URL activa de Google Colab / Cloudflare",
-        "operationId": "registrar_url_inferencia_api_v1_inferencia_registrar_url_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RegistrarInferenciaRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/estado/inferencia": {
       "get": {
         "tags": [
@@ -599,20 +502,6 @@
   },
   "components": {
     "schemas": {
-      "AccesoAdminRequest": {
-        "properties": {
-          "email": {
-            "type": "string",
-            "title": "Email",
-            "description": "Correo de administrador autorizado"
-          }
-        },
-        "type": "object",
-        "required": [
-          "email"
-        ],
-        "title": "AccesoAdminRequest"
-      },
       "ActualizarInferenciaAdminRequest": {
         "properties": {
           "inference_url": {
@@ -740,26 +629,6 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
-      },
-      "RegistrarInferenciaRequest": {
-        "properties": {
-          "inference_url": {
-            "type": "string",
-            "title": "Inference Url",
-            "description": "URL HTTPS del túnel de inferencia (Cloudflare / RunPod)"
-          },
-          "api_key": {
-            "type": "string",
-            "title": "Api Key",
-            "description": "Clave INFERENCE_API_KEY opcional",
-            "default": ""
-          }
-        },
-        "type": "object",
-        "required": [
-          "inference_url"
-        ],
-        "title": "RegistrarInferenciaRequest"
       },
       "ValidationError": {
         "properties": {
