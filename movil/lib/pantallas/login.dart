@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../config.dart';
 import '../servicios/api.dart';
@@ -15,8 +16,11 @@ class LoginPantalla extends StatefulWidget {
 class _LoginPantallaState extends State<LoginPantalla> {
   bool _cargando = false;
   String? _error;
+  bool _mostrarAyudaSha1 = false;
   late final TextEditingController _emailController;
-  bool _editandoEmail = false;
+
+  static const String _sha1App = '75:F5:CD:57:D9:72:77:39:09:C3:2C:9B:F8:23:4A:87:26:15:4D:52';
+  static const String _paqueteApp = 'com.controlpeaje.control_peaje';
 
   @override
   void initState() {
@@ -47,6 +51,30 @@ class _LoginPantallaState extends State<LoginPantalla> {
     );
   }
 
+  Future<void> _ingresarGoogle() async {
+    setState(() {
+      _cargando = true;
+      _error = null;
+      _mostrarAyudaSha1 = false;
+    });
+
+    try {
+      final usuario = await AuthService.iniciarSesionGoogle();
+      _navegarAInicio(usuario);
+    } catch (e) {
+      if (!mounted) return;
+      final strErr = e.toString();
+      setState(() {
+        _error = strErr;
+        if (strErr.contains('[16]') || strErr.contains('reauth failed') || strErr.contains('SHA-1')) {
+          _mostrarAyudaSha1 = true;
+        }
+      });
+    } finally {
+      if (mounted) setState(() => _cargando = false);
+    }
+  }
+
   Future<void> _ingresarDirecto() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
@@ -61,23 +89,6 @@ class _LoginPantallaState extends State<LoginPantalla> {
 
     try {
       final usuario = await AuthService.iniciarSesionDirecta(email);
-      _navegarAInicio(usuario);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _cargando = false);
-    }
-  }
-
-  Future<void> _ingresarGoogle() async {
-    setState(() {
-      _cargando = true;
-      _error = null;
-    });
-
-    try {
-      final usuario = await AuthService.iniciarSesionGoogle();
       _navegarAInicio(usuario);
     } catch (e) {
       if (!mounted) return;
@@ -212,7 +223,7 @@ class _LoginPantallaState extends State<LoginPantalla> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Cabecera con ilustración y logo del sistema
+                // Icono e Identidad Visual del Peaje
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -221,8 +232,8 @@ class _LoginPantallaState extends State<LoginPantalla> {
                     border: Border.all(color: Colors.blueAccent.withAlpha(90), width: 2),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.blueAccent.withAlpha(50),
-                        blurRadius: 24,
+                        color: Colors.blueAccent.withAlpha(60),
+                        blurRadius: 28,
                         spreadRadius: 4,
                       ),
                     ],
@@ -245,21 +256,21 @@ class _LoginPantallaState extends State<LoginPantalla> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Gestión Automatizada & Visión por Computadora',
-                  style: TextStyle(fontSize: 13, color: Colors.white60),
+                  'Sistema Inteligente de Detección & Cobro Automatizado',
+                  style: TextStyle(fontSize: 12, color: Colors.white60),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 14),
 
-                // Badges de modelos de IA
+                // Badges de los Modelos
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   alignment: WrapAlignment.center,
                   children: [
-                    _chipModelo('🔍 M1 Placas', Colors.amber),
+                    _chipModelo('🔍 M1 Placas OCR', Colors.amber),
                     _chipModelo('🚚 M2 Tipos', Colors.blue),
-                    _chipModelo('⚙️ M3 Ejes', Colors.purple),
+                    _chipModelo('⚙️ M3 Ejes & Ruedas', Colors.purple),
                     _chipModelo('🛡️ +5 Privacidad', Colors.teal),
                   ],
                 ),
@@ -267,130 +278,131 @@ class _LoginPantallaState extends State<LoginPantalla> {
 
                 // Tarjeta Principal de Inicio de Sesión
                 Card(
-                  elevation: 6,
+                  elevation: 8,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   color: const Color(0xFF1E293B),
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(22),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Sección de Acceso Directo de Administrador
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.blueGrey.shade800),
+                        const Text(
+                          'Acceso al Sistema',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.verified_user, color: Colors.greenAccent, size: 18),
-                                  const SizedBox(width: 6),
-                                  const Text(
-                                    'Acceso Administrador Autorizado',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  IconButton(
-                                    icon: Icon(
-                                      _editandoEmail ? Icons.check : Icons.edit,
-                                      color: Colors.white70,
-                                      size: 16,
-                                    ),
-                                    onPressed: () {
-                                      setState(() => _editandoEmail = !_editandoEmail);
-                                    },
-                                    tooltip: _editandoEmail ? 'Listo' : 'Cambiar correo',
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              if (_editandoEmail)
-                                TextField(
-                                  controller: _emailController,
-                                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                                  decoration: InputDecoration(
-                                    isDense: true,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                    filled: true,
-                                    fillColor: const Color(0xFF1E293B),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(6),
-                                      borderSide: BorderSide(color: Colors.blueAccent.shade100),
-                                    ),
-                                  ),
-                                )
-                              else
-                                Text(
-                                  _emailController.text,
-                                  style: const TextStyle(
-                                    color: Colors.cyanAccent,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                            ],
-                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
-
-                        // Botón de Acceso Directo
-                        FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: _cargando ? null : _ingresarDirecto,
-                          icon: _cargando
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.login_rounded),
-                          label: Text(
-                            _cargando ? 'Iniciando sesión...' : 'Entrar como Administrador',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Selecciona tu cuenta de Google autorizada para ingresar.',
+                          style: TextStyle(color: Colors.white60, fontSize: 13),
+                          textAlign: TextAlign.center,
                         ),
+                        const SizedBox(height: 20),
 
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(child: Divider(color: Colors.white24)),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                              child: Text('o ingresar con cuenta', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                        // BOTÓN PRINCIPAL: GOOGLE SIGN-IN OFICIAL
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF1F2937),
+                            elevation: 3,
+                            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
                             ),
-                            Expanded(child: Divider(color: Colors.white24)),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Botón de Google Sign-In
-                        OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: const BorderSide(color: Colors.white30),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
                           onPressed: _cargando ? null : _ingresarGoogle,
-                          icon: const Icon(Icons.account_circle, color: Colors.white70),
-                          label: const Text('Google Sign-In'),
+                          child: _cargando
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.blueAccent),
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _iconoGoogle(),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      'Ingresar con Google',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
 
-                        // Alerta de Error
-                        if (_error != null) ...[
+                        // Alerta si ocurre el error [16] de Google Play Services
+                        if (_mostrarAyudaSha1) ...[
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade900.withAlpha(60),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.amber.shade400),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.info_outline, color: Colors.amberAccent, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Vincular SHA-1 en Google Cloud',
+                                      style: TextStyle(
+                                        color: Colors.amberAccent,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Para que Google muestre tus cuentas en el celular, registra esta app en Google Cloud (Credenciales → Crear OAuth Android):',
+                                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '• Paquete: $_paqueteApp\n• SHA-1: $_sha1App',
+                                  style: const TextStyle(
+                                    color: Colors.cyanAccent,
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    onPressed: () {
+                                      Clipboard.setData(const ClipboardData(text: _sha1App));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('SHA-1 copiado al portapapeles')),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.copy, size: 14, color: Colors.amberAccent),
+                                    label: const Text(
+                                      'Copiar SHA-1',
+                                      style: TextStyle(color: Colors.amberAccent, fontSize: 11),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+
+                        // Otros mensajes de error
+                        if (_error != null && !_mostrarAyudaSha1) ...[
                           const SizedBox(height: 16),
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -414,6 +426,38 @@ class _LoginPantallaState extends State<LoginPantalla> {
                             ),
                           ),
                         ],
+
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            const Expanded(child: Divider(color: Colors.white24)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Text(
+                                'o acceso de emergencia',
+                                style: TextStyle(color: Colors.white38, fontSize: 11),
+                              ),
+                            ),
+                            const Expanded(child: Divider(color: Colors.white24)),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Acceso rápido directo como respaldo
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                            side: const BorderSide(color: Colors.white24),
+                            padding: const EdgeInsets.symmetric(vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          onPressed: _cargando ? null : _ingresarDirecto,
+                          icon: const Icon(Icons.flash_on, color: Colors.amberAccent, size: 18),
+                          label: Text(
+                            'Entrar directo como ${_emailController.text}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -433,6 +477,16 @@ class _LoginPantallaState extends State<LoginPantalla> {
     );
   }
 
+  Widget _iconoGoogle() {
+    return SizedBox(
+      width: 22,
+      height: 22,
+      child: CustomPaint(
+        painter: _GoogleLogoPainter(),
+      ),
+    );
+  }
+
   Widget _chipModelo(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -447,4 +501,36 @@ class _LoginPantallaState extends State<LoginPantalla> {
       ),
     );
   }
+}
+
+class _GoogleLogoPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    final paintBlue = Paint()..color = const Color(0xFF4285F4);
+    final paintRed = Paint()..color = const Color(0xFFEA4335);
+    final paintYellow = Paint()..color = const Color(0xFFFBBC05);
+    final paintGreen = Paint()..color = const Color(0xFF34A853);
+
+    final center = Offset(w / 2, h / 2);
+    final radius = w / 2;
+
+    // Barra horizontal derecha
+    canvas.drawRect(
+      Rect.fromLTRB(w * 0.45, h * 0.4, w, h * 0.6),
+      paintBlue,
+    );
+
+    // Arcos circulares
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawArc(rect, -0.6, 1.2, false, paintBlue..style = PaintingStyle.stroke..strokeWidth = w * 0.22);
+    canvas.drawArc(rect, 0.6, 1.5, false, paintGreen..style = PaintingStyle.stroke..strokeWidth = w * 0.22);
+    canvas.drawArc(rect, 2.1, 1.3, false, paintYellow..style = PaintingStyle.stroke..strokeWidth = w * 0.22);
+    canvas.drawArc(rect, 3.4, 1.3, false, paintRed..style = PaintingStyle.stroke..strokeWidth = w * 0.22);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
