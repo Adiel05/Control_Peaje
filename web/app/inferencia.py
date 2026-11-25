@@ -96,7 +96,7 @@ def inferir(db: Session, imagen_bytes: bytes, modo: str = "completo") -> dict:
 
     destino = f"{url.rstrip('/')}/infer"
     try:
-        with httpx.Client(timeout=min(settings.inference_timeout, 10.0)) as client:
+        with httpx.Client(timeout=min(settings.inference_timeout, 25.0)) as client:
             resp = client.post(
                 destino,
                 files={"imagen": ("frame.jpg", imagen_bytes, "image/jpeg")},
@@ -107,10 +107,12 @@ def inferir(db: Session, imagen_bytes: bytes, modo: str = "completo") -> dict:
             mock_res = _mock_resultado(imagen_bytes, modo)
             mock_res["aviso"] = f"Inferencia remota HTTP {resp.status_code}, usando respaldo mock"
             return mock_res
-        return resp.json()
-    except Exception:
+        data = resp.json()
+        data.setdefault("mock", False)
+        return data
+    except Exception as exc:
         mock_res = _mock_resultado(imagen_bytes, modo)
-        mock_res["aviso"] = "Inferencia remota no disponible; procesado con modelo de respaldo"
+        mock_res["aviso"] = f"Inferencia remota no disponible ({type(exc).__name__}); usando respaldo mock"
         return mock_res
 
 

@@ -24,7 +24,7 @@ def limpiar_placa(texto: str | None) -> str:
 class LectorPlacas:
     """Carga los modelos ONNX de detección y OCR una sola vez para baja latencia."""
 
-    def __init__(self, carpeta_modelos: Path | str = CARPETA_M1_DEFECTO, umbral: float = 0.4) -> None:
+    def __init__(self, carpeta_modelos: Path | str = CARPETA_M1_DEFECTO, umbral: float = 0.28) -> None:
         carpeta = Path(carpeta_modelos)
         self.umbral = umbral
         self.modelo_det = carpeta / "yolo-v9-t-384-license-plates-end2end.onnx"

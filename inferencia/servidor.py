@@ -241,7 +241,7 @@ def inferir(
         t0 = time.perf_counter()
         ruedas_pts: list[tuple[int, int]] = []
         if _modelos["m3"] is not None:
-            res_m3 = _modelos["m3"](img, verbose=False, conf=0.35)[0]
+            res_m3 = _modelos["m3"](img, verbose=False, conf=0.25)[0]
             if res_m3.keypoints is not None and res_m3.keypoints.xy is not None:
                 kps_xy = res_m3.keypoints.xy.cpu().numpy()
                 kps_conf = res_m3.keypoints.conf.cpu().numpy() if res_m3.keypoints.conf is not None else None
@@ -250,11 +250,12 @@ def inferir(
                         continue
                     kx, ky = float(kps_xy[i][0][0]), float(kps_xy[i][0][1])
                     kc = float(kps_conf[i][0]) if kps_conf is not None else 1.0
-                    if kc <= 0.5 or (kx == 0 and ky == 0):
+                    if kc <= 0.35 or (kx == 0 and ky == 0):
                         continue
                     if vehiculo_caja is None or _dentro_caja(kx, ky, vehiculo_caja, margen=0.10):
                         ruedas_pts.append((int(kx), int(ky)))
-                        cv2.circle(anotada, (int(kx), int(ky)), 8, (0, 255, 255), -1)
+                        cv2.circle(anotada, (int(kx), int(ky)), 9, (0, 255, 255), -1)
+                        cv2.circle(anotada, (int(kx), int(ky)), 12, (0, 0, 255), 2)
         t_m3 = round((time.perf_counter() - t0) * 1000)
 
         ruedas = len(ruedas_pts) if _modelos["m3"] is not None else None

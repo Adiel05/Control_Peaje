@@ -48,8 +48,20 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
     placa_raw = res.get("placa_texto_crudo") or res.get("placa") or ""
     placa_norm = normalizar(res.get("placa") or placa_raw)
 
+    meta_visual = {
+        "imagen_anotada": res.get("imagen_anotada"),
+        "categoria": res.get("categoria"),
+        "ejes": res.get("ejes"),
+        "ruedas": res.get("ruedas"),
+        "pasajeros": res.get("pasajeros"),
+        "latencia_ms": res.get("latencia_ms"),
+        "latencias": res.get("latencias"),
+        "mock": bool(res.get("mock", False)),
+        "aviso": res.get("aviso"),
+    }
+
     if not placa_norm:
-        return {"registrado": False, "motivo": "sin_placa", "inferencia": res}
+        return {"registrado": False, "motivo": "sin_placa", **meta_visual, "inferencia": res}
 
     conf = float(res.get("confianza") or 0.0)
     if not formato_valido(placa_norm) and conf < 0.7:
@@ -57,6 +69,7 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
             "registrado": False,
             "motivo": "lectura_dudosa",
             "placa": placa_norm,
+            **meta_visual,
             "inferencia": res,
         }
 
@@ -75,6 +88,7 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
                 "registrado": False,
                 "motivo": "duplicado",
                 "placa": placa_norm,
+                **meta_visual,
                 "paso": serializar_paso(ultimo_misma_placa, caseta.nombre),
             }
 
@@ -160,4 +174,7 @@ def procesar_frame(db: Session, usuario: Usuario | None, caseta_id: int, imagen_
         "saldo_restante": float(vehiculo.saldo) if vehiculo else None,
         "latencia_ms": paso.latencia_ms,
         "latencias": res.get("latencias"),
+        "imagen_anotada": res.get("imagen_anotada"),
+        "mock": bool(res.get("mock", False)),
+        "aviso": res.get("aviso"),
     }
