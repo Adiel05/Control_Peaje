@@ -24,6 +24,7 @@ runs/
 weights/
 
 # Flutter / Android
+*.apk
 movil/build/
 movil/.dart_tool/
 movil/.flutter-plugins
